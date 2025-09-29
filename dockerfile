@@ -1,5 +1,5 @@
 # Étape 1 : Construire le binaire
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Arguments de build pour le versioning
 ARG VERSION=dev
