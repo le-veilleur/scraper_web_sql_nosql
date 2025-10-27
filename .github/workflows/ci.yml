@@ -183,7 +183,7 @@ jobs:
         go build -ldflags="-s -w" -o ../dist/scraper-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }} ./scraper.go
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: binaries-${{ matrix.os }}-${{ matrix.arch }}
         path: dist/
