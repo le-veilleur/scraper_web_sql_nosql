@@ -82,3 +82,60 @@ func RunScraper() error {
 	})
 	return nil
 }
+
+// GetScraperData récupère le fichier JSON généré par le scraper
+func GetScraperData(c *fiber.Ctx) error {
+	// Emplacements possibles du fichier data.json
+	possiblePaths := []string{
+		"/go_api_mongo_scrapper/scraper/data.json", // Volume partagé (emplacement principal)
+		"/app/data.json", // Répertoire de travail de l'API
+		"./data.json",    // Répertoire courant
+		"data.json",      // Répertoire courant (relatif)
+	}
+
+	var filePath string
+	var found bool
+
+	// Chercher le fichier dans les emplacements possibles
+	for _, path := range possiblePaths {
+		if _, err := os.Stat(path); err == nil {
+			filePath = path
+			found = true
+			logger.LogInfo("Fichier data.json trouvé", map[string]interface{}{
+				"path": filePath,
+			})
+			break
+		}
+	}
+
+	if !found {
+		logger.LogError("Fichier data.json introuvable", nil, map[string]interface{}{
+			"paths_checked": possiblePaths,
+		})
+		return c.Status(404).JSON(fiber.Map{
+			"error":   true,
+			"message": "Fichier data.json introuvable. Le scraper doit être exécuté au moins une fois.",
+		})
+	}
+
+	// Lire le fichier
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		logger.LogError("Erreur lors de la lecture du fichier data.json", err, map[string]interface{}{
+			"path": filePath,
+		})
+		return c.Status(500).JSON(fiber.Map{
+			"error":   true,
+			"message": "Erreur lors de la lecture du fichier",
+		})
+	}
+
+	// Déterminer le nom du fichier avec timestamp
+	timestamp := time.Now().Format("20060102-150405")
+	filename := "scraper-data-" + timestamp + ".json"
+
+	// Retourner le fichier avec les headers appropriés
+	c.Set("Content-Type", "application/json")
+	c.Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	return c.Send(fileContent)
+}

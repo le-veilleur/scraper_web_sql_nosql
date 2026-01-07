@@ -42,7 +42,7 @@ services:
       - LOG_LEVEL=info
       - TZ=Europe/Paris
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8082:8080"
     depends_on:
       mongodb:
         condition: service_healthy
