@@ -242,7 +242,7 @@ func getPhysicalCores() int {
 	case numLogicalCPU == 8:
 		return 4 // Probablement 4 cœurs avec HT
 	case numLogicalCPU == 12:
-		return 6 // Probablement 6 cœurs avec HT (comme ta machine)
+		return 6 // Probablement 6 cœurs avec HT
 	case numLogicalCPU == 16:
 		return 8 // Probablement 8 cœurs avec HT
 	case numLogicalCPU == 24:

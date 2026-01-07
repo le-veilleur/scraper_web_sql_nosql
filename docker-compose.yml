@@ -81,8 +81,6 @@ services:
       - app-network
     volumes:
       - scraper_data:/app/data
-    profiles:
-      - scraper  # Utiliser 'docker-compose --profile scraper up' pour lancer le scraper
 
   # MongoDB Express (Interface web pour MongoDB)
   mongo-express:

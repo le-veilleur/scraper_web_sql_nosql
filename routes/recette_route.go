@@ -17,7 +17,8 @@ import (
 
 func RecetteRoute(app *fiber.App) {
 	app.Post("/scraper/run", controllers.LaunchScraper)
-	app.Get("/scraper/data", controllers.GetScraperData)
+	app.Post("/scraper/run/stream", controllers.LaunchScraperStream) // Route pour streaming des logs en temps réel
+	app.Get("/scraper/data", controllers.GetScraperData)             // Route pour télécharger le fichier JSON
 	app.Post("/recettes", controllers.PostRecette)
 	app.Get("/recettes", controllers.GetAllRecettes)
 	app.Get("/recette/:id", controllers.GetRecetteByID)
