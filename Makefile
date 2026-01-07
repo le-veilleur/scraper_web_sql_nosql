@@ -5,7 +5,7 @@
 # Variables
 BINARY_NAME=scraper
 SCRAPER_DIR=./scraper
-VERSION?=dev
+VERSION?=production
 REGISTRY?=ghcr.io
 IMAGE_NAME?=go-api-mongo-scrapper
 GIT_COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
