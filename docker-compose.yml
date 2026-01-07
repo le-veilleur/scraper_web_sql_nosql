@@ -35,21 +35,21 @@ services:
     container_name: go-api-server
     restart: unless-stopped
     environment:
-      - PORT=8080
+      - PORT=8082
       - ENV=production
       - MONGODB_URI=mongodb://admin:password123@mongodb:27017/recipes?authSource=admin
       - DB_NAME=recipes
       - LOG_LEVEL=info
       - TZ=Europe/Paris
     ports:
-      - "0.0.0.0:8082:8080"
+      - "0.0.0.0:8082:8082"
     depends_on:
       mongodb:
         condition: service_healthy
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && timeout 5s cat <&3 | grep -q '200 OK' || exit 1"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8082 && echo -e 'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && timeout 5s cat <&3 | grep -q '200 OK' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

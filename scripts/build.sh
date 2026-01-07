@@ -90,10 +90,10 @@ log "Test des images..."
 
 # Test de l'image API (health check)
 log "Test de l'image API..."
-CONTAINER_ID=$(docker run -d -p 8082:8080 go-api-mongo-scrapper:$VERSION)
+CONTAINER_ID=$(docker run -d -p 8082:8082 go-api-mongo-scrapper:$VERSION)
 sleep 5
 
-if docker exec $CONTAINER_ID wget --no-verbose --tries=1 --spider http://localhost:8080/version; then
+if docker exec $CONTAINER_ID wget --no-verbose --tries=1 --spider http://localhost:8082/version; then
     success "Image API fonctionne correctement"
 else
     warn "L'image API ne répond pas correctement"

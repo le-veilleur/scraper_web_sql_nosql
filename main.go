@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	fiberlogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/joho/godotenv"
 	"github.com/maxime-louis14/api-golang/database"
 	"github.com/maxime-louis14/api-golang/logger"
 	"github.com/maxime-louis14/api-golang/middleware"
@@ -59,6 +60,12 @@ func metricsHandler(c *fiber.Ctx) error {
 }
 
 func main() {
+	// Charger les variables d'environnement depuis le fichier .env
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+
 	// Affichage des informations de version
 	fmt.Printf("Go API MongoDB Scrapper\n")
 	fmt.Printf("Version: %s\n", version)
@@ -174,7 +181,7 @@ func main() {
 	// Démarrage du serveur
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8082"
 	}
 
 	logger.LogInfo("Serveur démarré", map[string]interface{}{
