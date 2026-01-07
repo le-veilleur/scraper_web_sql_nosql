@@ -7,7 +7,7 @@ echo "🚀 Test des métriques de l'API Go MongoDB Scrapper"
 echo "=================================================="
 
 # Configuration
-API_URL="http://localhost:8080"
+API_URL="http://localhost:8082"
 LOG_FILE="api_metrics_test.log"
 
 # Fonction pour faire des requêtes et afficher les résultats

@@ -57,12 +57,12 @@ LABEL version="${VERSION}" \
       org.opencontainers.image.source="https://github.com/maxime-louis14/go_api_mongo_scrapper"
 
 # Variables d'environnement par défaut
-ENV PORT=8080 \
+ENV PORT=8082 \
     ENV=production \
     LOG_LEVEL=info
 
 # Exposer les ports
-EXPOSE 8080
+EXPOSE 8082
 
 # Démarrer l'application
 ENTRYPOINT ["/app/api-server"]
