@@ -341,7 +341,7 @@ func configureRealisticHeaders(r *colly.Request) {
 	// Headers standards d'un navigateur moderne
 	r.Headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
 	r.Headers.Set("Accept-Language", "en-US,en;q=0.9,fr;q=0.8")
-	r.Headers.Set("Accept-Encoding", "gzip, deflate, br")
+	r.Headers.Set("Accept-Encoding", "gzip, deflate, br, zstd")
 	r.Headers.Set("DNT", "1")
 	r.Headers.Set("Connection", "keep-alive")
 	r.Headers.Set("Upgrade-Insecure-Requests", "1")
@@ -351,12 +351,23 @@ func configureRealisticHeaders(r *colly.Request) {
 	r.Headers.Set("Sec-Fetch-User", "?1")
 	r.Headers.Set("Cache-Control", "max-age=0")
 
-	// Ajouter un Referer si on a une URL précédente
+	// Headers sec-ch-ua pour simuler un navigateur moderne (Chrome/Edge)
+	r.Headers.Set("sec-ch-ua", `"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"`)
+	r.Headers.Set("sec-ch-ua-mobile", "?0")
+	r.Headers.Set("sec-ch-ua-platform", `"Windows"`)
+
+	// Ajouter un Referer réaliste
 	if r.URL != nil && r.URL.Host != "" {
-		// Pour les pages internes, utiliser le domaine comme referer
-		if strings.Contains(r.URL.String(), "allrecipes.com") {
+		// Pour la première visite, utiliser Google comme referer
+		if !strings.Contains(r.URL.String(), "allrecipes.com") || r.URL.Path == "/" {
+			r.Headers.Set("Referer", "https://www.google.com/")
+		} else {
+			// Pour les pages internes, utiliser le domaine comme referer
 			r.Headers.Set("Referer", "https://www.allrecipes.com/")
 		}
+	} else {
+		// Referer par défaut pour la première visite
+		r.Headers.Set("Referer", "https://www.google.com/")
 	}
 }
 
@@ -400,9 +411,9 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 		statusCode := r.StatusCode
 		if statusCode == 403 || statusCode == 429 {
 			log.Printf("⚠️  Erreur %d détectée pour %s: %v\n", statusCode, r.Request.URL, err)
-			log.Printf("🔄 Attente avant retry...\n")
-			// Attendre plus longtemps en cas d'erreur
-			time.Sleep(getRandomDelay(3000, 6000))
+			log.Printf("🔄 Attente prolongée avant retry (10-20s)...\n")
+			// Attendre beaucoup plus longtemps en cas d'erreur (10-20 secondes)
+			time.Sleep(getRandomDelay(10000, 20000))
 		} else {
 			log.Printf("❌ Erreur HTTP %d pour %s: %v\n", statusCode, r.Request.URL, err)
 		}
@@ -445,10 +456,11 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 	collector := colly.NewCollector()
 
 	// Configuration des limites avec délais plus longs pour éviter la détection
+	// Parallélisme réduit à 1 pour éviter la détection anti-bot
 	collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
-		Parallelism: 3,                      // Réduit à 3 pour éviter la surcharge
-		Delay:       800 * time.Millisecond, // Délai de base augmenté à 800ms
+		Parallelism: 1,               // Réduit à 1 requête à la fois pour éviter la détection
+		Delay:       2 * time.Second, // Délai de base augmenté à 2 secondes
 	})
 
 	// Map pour suivre les pages visitées par catégorie
@@ -460,7 +472,7 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 		configureRealisticHeaders(r)
 
 		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
-		randomDelay := getRandomDelay(300, 1000) // Délai aléatoire entre 300ms et 1000ms
+		randomDelay := getRandomDelay(1500, 4000) // Délai aléatoire entre 1.5s et 4s
 		time.Sleep(randomDelay)
 
 		stats.IncrementMainPageRequest()
@@ -472,9 +484,9 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 		statusCode := r.StatusCode
 		if statusCode == 403 || statusCode == 429 {
 			log.Printf("⚠️  Erreur %d détectée pour %s: %v\n", statusCode, r.Request.URL, err)
-			log.Printf("🔄 Attente avant retry...\n")
-			// Attendre plus longtemps en cas d'erreur
-			time.Sleep(getRandomDelay(3000, 6000))
+			log.Printf("🔄 Attente prolongée avant retry (10-20s)...\n")
+			// Attendre beaucoup plus longtemps en cas d'erreur (10-20 secondes)
+			time.Sleep(getRandomDelay(10000, 20000))
 		} else {
 			log.Printf("❌ Erreur HTTP %d pour %s: %v\n", statusCode, r.Request.URL, err)
 		}
@@ -528,7 +540,7 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 			// Log de pagination supprimé pour réduire la verbosité
 
 			// Visiter la page suivante avec un délai aléatoire plus long
-			randomDelay := getRandomDelay(1000, 2000) // Délai aléatoire entre 1s et 2s
+			randomDelay := getRandomDelay(2000, 5000) // Délai aléatoire entre 2s et 5s
 			time.Sleep(randomDelay)
 			collector.Visit(nextPageURL)
 		} else {
@@ -547,7 +559,7 @@ func createRecipeCollector(stats *ScrapingStats) *colly.Collector {
 	collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
 		Parallelism: 1,
-		Delay:       600 * time.Millisecond, // Délai de base augmenté à 600ms
+		Delay:       2 * time.Second, // Délai de base augmenté à 2 secondes
 	})
 
 	collector.OnRequest(func(r *colly.Request) {
@@ -555,7 +567,7 @@ func createRecipeCollector(stats *ScrapingStats) *colly.Collector {
 		configureRealisticHeaders(r)
 
 		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
-		randomDelay := getRandomDelay(200, 600) // Délai aléatoire entre 200ms et 600ms
+		randomDelay := getRandomDelay(1500, 4000) // Délai aléatoire entre 1.5s et 4s
 		time.Sleep(randomDelay)
 
 		stats.IncrementRecipeRequest()
@@ -567,9 +579,9 @@ func createRecipeCollector(stats *ScrapingStats) *colly.Collector {
 		statusCode := r.StatusCode
 		if statusCode == 403 || statusCode == 429 {
 			log.Printf("⚠️  Erreur %d détectée pour la recette %s: %v\n", statusCode, r.Request.URL, err)
-			log.Printf("🔄 Attente avant retry...\n")
-			// Attendre plus longtemps en cas d'erreur
-			time.Sleep(getRandomDelay(2000, 5000))
+			log.Printf("🔄 Attente prolongée avant retry (10-20s)...\n")
+			// Attendre beaucoup plus longtemps en cas d'erreur (10-20 secondes)
+			time.Sleep(getRandomDelay(10000, 20000))
 		} else {
 			log.Printf("❌ Erreur HTTP %d pour la recette %s: %v\n", statusCode, r.Request.URL, err)
 		}
@@ -884,7 +896,25 @@ func main() {
 		"https://www.allrecipes.com/recipes/1569/everyday-cooking/on-the-go/tailgating/",     // Tailgating
 	}
 
-	// ===== PHASE 6: EXÉCUTION DE LA COLLECTE =====
+	// ===== PHASE 6: VISITE INITIALE DE LA PAGE D'ACCUEIL =====
+	// Visiter la page d'accueil pour obtenir les cookies de session (important pour contourner Cloudflare)
+	log.Printf("Visite de la page d'accueil pour obtenir les cookies de session...\n")
+	homepageCollector := colly.NewCollector()
+	homepageCollector.OnRequest(func(r *colly.Request) {
+		configureRealisticHeaders(r)
+		// Pour la première visite, utiliser Google comme referer
+		r.Headers.Set("Referer", "https://www.google.com/")
+	})
+	err := homepageCollector.Visit("https://www.allrecipes.com/")
+	if err != nil {
+		log.Printf("⚠️  Erreur lors de la visite de la page d'accueil: %v\n", err)
+	} else {
+		log.Printf("✅ Page d'accueil visitée avec succès, cookies de session obtenus\n")
+		// Attendre un peu après la visite de la page d'accueil
+		time.Sleep(getRandomDelay(2000, 4000))
+	}
+
+	// ===== PHASE 7: EXÉCUTION DE LA COLLECTE =====
 	// Démarrer la collecte de toutes les catégories définies
 	log.Printf("Début de la collecte de %d catégories...\n", len(categories))
 	for i, category := range categories {
@@ -898,23 +928,23 @@ func main() {
 			continue // Continuer avec la catégorie suivante en cas d'erreur
 		}
 
-		// Pause respectueuse entre les catégories avec délai aléatoire
-		randomDelay := getRandomDelay(2000, 4000) // Délai aléatoire entre 2s et 4s
+		// Pause respectueuse entre les catégories avec délai aléatoire augmenté
+		randomDelay := getRandomDelay(5000, 10000) // Délai aléatoire entre 5s et 10s
 		time.Sleep(randomDelay)
 	}
 
-	// ===== PHASE 7: FINALISATION =====
+	// ===== PHASE 8: FINALISATION =====
 	// Fermer le channel des URLs pour signaler qu'il n'y a plus de recettes à traiter
 	close(recipeURLs)
 
 	// Attendre que toutes les recettes soient collectées (signal du collector)
 	<-done
 
-	// ===== PHASE 8: SAUVEGARDE ET STATISTIQUES =====
+	// ===== PHASE 9: SAUVEGARDE ET STATISTIQUES =====
 	// Sauvegarder toutes les recettes dans un fichier JSON
 	filename := "data.json"
 	recipesMutex.RLock()
-	err := saveRecipesToFile(recipes, filename)
+	err = saveRecipesToFile(recipes, filename)
 	recipesMutex.RUnlock()
 
 	if err != nil {
