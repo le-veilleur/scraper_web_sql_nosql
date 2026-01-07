@@ -18,10 +18,10 @@ RUN go mod download
 # Copier le code source du scraper
 COPY scraper/ ./scraper/
 
-# Construire le binaire avec versioning
+# Construire le binaire avec versioning (compiler tout le package scraper)
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w -X main.version=${VERSION} -X main.gitCommit=${GIT_COMMIT} -X main.buildTime=${BUILD_TIME}" \
-    -o scraper-binary ./scraper/scraper.go
+    -o scraper-binary ./scraper/
 
 # Étape 2 : Image finale minimale
 FROM scratch
