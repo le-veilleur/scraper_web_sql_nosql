@@ -1,0 +1,36 @@
+name: Déploiement - Main
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Déploiement sur VPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PI_SSH_KEY }}
+
+      - name: Deploy to server
+        env:
+          PI_HOST: ${{ secrets.PI_HOST }}
+          PI_USER: ${{ secrets.PI_USER }}
+          PI_PORT: ${{ secrets.PI_PORT }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${PI_PORT} ${PI_USER}@${PI_HOST} << 'EOF'
+            # Aller dans le dossier du projet
+            cd ~/GitHub/scraper_web_sql_nosql
+            
+            # Récupérer les dernières modifications
+            git pull origin main
+            
+            # Reconstruire et redémarrer uniquement le service API (pas le scraper)
+            docker-compose up -d --build api-server
+            
+            # Nettoyer les anciennes images
+            docker image prune -f
+          EOF
+
