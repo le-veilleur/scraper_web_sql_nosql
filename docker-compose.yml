@@ -29,7 +29,7 @@ services:
       context: .
       dockerfile: dockerfile
       args:
-        VERSION: ${VERSION:-dev}
+        VERSION: ${VERSION:-production}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         BUILD_TIME: ${BUILD_TIME:-unknown}
     container_name: go-api-server
@@ -64,7 +64,7 @@ services:
       context: .
       dockerfile: scraper/dockerfile
       args:
-        VERSION: ${VERSION:-dev}
+        VERSION: ${VERSION:-production}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         BUILD_TIME: ${BUILD_TIME:-unknown}
     container_name: go-scraper

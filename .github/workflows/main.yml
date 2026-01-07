@@ -27,10 +27,19 @@ jobs:
             # Récupérer les dernières modifications
             git pull origin main
             
-            # Reconstruire et redémarrer uniquement le service API (pas le scraper)
-            docker-compose up -d --build api-server
+            # Arrêter les services
+            docker-compose down
+            
+            # Reconstruire toutes les images avec --no-cache pour forcer la reconstruction
+            docker-compose build --no-cache
+            
+            # Redémarrer tous les services
+            docker-compose up -d
             
             # Nettoyer les anciennes images
             docker image prune -f
+            
+            # Afficher le statut des services
+            docker-compose ps
           EOF
 

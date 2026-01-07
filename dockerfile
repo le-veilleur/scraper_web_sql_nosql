@@ -2,7 +2,7 @@
 FROM golang:1.22-alpine AS builder
 
 # Arguments de build pour le versioning
-ARG VERSION=dev
+ARG VERSION=production
 ARG GIT_COMMIT=unknown
 ARG BUILD_TIME=unknown
 
@@ -32,7 +32,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 FROM scratch
 
 # Redéclarer les arguments pour cette étape
-ARG VERSION=dev
+ARG VERSION=production
 ARG GIT_COMMIT=unknown
 ARG BUILD_TIME=unknown
 
