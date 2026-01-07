@@ -42,7 +42,7 @@ services:
       - LOG_LEVEL=info
       - TZ=Europe/Paris
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8081:8080"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -81,8 +81,6 @@ services:
       - app-network
     volumes:
       - scraper_data:/app/data
-    profiles:
-      - scraper  # Utiliser 'docker-compose --profile scraper up' pour lancer le scraper
 
   # MongoDB Express (Interface web pour MongoDB)
   mongo-express:

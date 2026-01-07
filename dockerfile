@@ -18,10 +18,15 @@ RUN go mod download
 # Copier le reste du code source
 COPY . .
 
-# Construire le binaire avec versioning
+# Construire le binaire API avec versioning
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w -X main.version=${VERSION} -X main.gitCommit=${GIT_COMMIT} -X main.buildTime=${BUILD_TIME}" \
     -o api-server ./main.go
+
+# Construire le binaire scraper avec versioning
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -X main.version=${VERSION} -X main.gitCommit=${GIT_COMMIT} -X main.buildTime=${BUILD_TIME}" \
+    -o scraper-binary ./scraper/scraper.go
 
 # Étape 2 : Image finale minimale
 FROM scratch
@@ -39,8 +44,9 @@ COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 WORKDIR /app
 
-# Copier le binaire
+# Copier les binaires
 COPY --from=builder /app/api-server /app/api-server
+COPY --from=builder /app/scraper-binary /app/scraper
 
 # Labels pour traçabilité
 LABEL version="${VERSION}" \
