@@ -391,6 +391,7 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 		DomainGlob:  "*",                    // Appliquer à tous les domaines
 		Parallelism: 3,                      // Réduit à 3 requêtes simultanées
 		Delay:       500 * time.Millisecond, // Délai de base de 500ms entre les requêtes
+		RandomDelay: 1 * time.Second,        // Délai aléatoire jusqu'à 1 seconde (fonctionnalité native Colly)
 	})
 
 	// Handler appelé avant chaque requête HTTP
@@ -398,10 +399,7 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 		// Configurer les headers réalistes pour éviter la détection
 		configureRealisticHeaders(r)
 
-		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
-		randomDelay := getRandomDelay(200, 800) // Délai aléatoire entre 200ms et 800ms
-		time.Sleep(randomDelay)
-
+		// Les délais aléatoires sont gérés automatiquement par Colly via RandomDelay dans LimitRule
 		stats.IncrementMainPageRequest() // Incrémenter le compteur de requêtes
 		// Log de requête supprimé pour réduire la verbosité
 	})
@@ -461,6 +459,7 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 		DomainGlob:  "*",
 		Parallelism: 1,               // Réduit à 1 requête à la fois pour éviter la détection
 		Delay:       2 * time.Second, // Délai de base augmenté à 2 secondes
+		RandomDelay: 2 * time.Second, // Délai aléatoire jusqu'à 2 secondes (fonctionnalité native Colly)
 	})
 
 	// Map pour suivre les pages visitées par catégorie
@@ -471,10 +470,7 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 		// Configurer les headers réalistes pour éviter la détection
 		configureRealisticHeaders(r)
 
-		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
-		randomDelay := getRandomDelay(1500, 4000) // Délai aléatoire entre 1.5s et 4s
-		time.Sleep(randomDelay)
-
+		// Les délais aléatoires sont gérés automatiquement par Colly via RandomDelay dans LimitRule
 		stats.IncrementMainPageRequest()
 		// Log de requête supprimé pour réduire la verbosité
 	})
@@ -566,10 +562,7 @@ func createRecipeCollector(stats *ScrapingStats) *colly.Collector {
 		// Configurer les headers réalistes pour éviter la détection
 		configureRealisticHeaders(r)
 
-		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
-		randomDelay := getRandomDelay(1500, 4000) // Délai aléatoire entre 1.5s et 4s
-		time.Sleep(randomDelay)
-
+		// Les délais aléatoires sont gérés automatiquement par Colly via RandomDelay dans LimitRule
 		stats.IncrementRecipeRequest()
 		// Log de requête supprimé pour réduire la verbosité
 	})
