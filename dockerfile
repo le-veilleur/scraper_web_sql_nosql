@@ -23,10 +23,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w -X main.version=${VERSION} -X main.gitCommit=${GIT_COMMIT} -X main.buildTime=${BUILD_TIME}" \
     -o api-server ./main.go
 
-# Construire le binaire scraper avec versioning
+# Construire le binaire scraper avec versioning (compiler tout le package scraper)
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w -X main.version=${VERSION} -X main.gitCommit=${GIT_COMMIT} -X main.buildTime=${BUILD_TIME}" \
-    -o scraper-binary ./scraper/scraper.go
+    -o scraper-binary ./scraper/
 
 # Étape 2 : Image finale minimale
 FROM scratch

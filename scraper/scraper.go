@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"runtime"
@@ -301,9 +300,9 @@ func calculateOptimalWorkers(minWorkers, maxWorkers int) int {
 	return optimalWorkers
 }
 
-// printVersionInfo affiche les informations de version (simplifié)
+// printVersionInfo affiche les informations de version
 func printVersionInfo() {
-	// Logs de version supprimés pour réduire la verbosité
+	logVersionPrint(version, gitCommit, buildTime, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 }
 
 // getBuildInfo supprimé - non utilisé après réduction des logs
@@ -401,6 +400,7 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 
 		// Les délais aléatoires sont gérés automatiquement par Colly via RandomDelay dans LimitRule
 		stats.IncrementMainPageRequest() // Incrémenter le compteur de requêtes
+<<<<<<< Updated upstream
 		// Log de requête supprimé pour réduire la verbosité
 	})
 
@@ -415,6 +415,9 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 		} else {
 			log.Printf("❌ Erreur HTTP %d pour %s: %v\n", statusCode, r.Request.URL, err)
 		}
+=======
+		logRequest(r.URL.String(), stats.GetTotalRequests())
+>>>>>>> Stashed changes
 	})
 
 	// Handler appelé pour chaque élément HTML correspondant au sélecteur CSS
@@ -439,9 +442,13 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 			// Envoyer la recette dans le channel (non-bloquant)
 			select {
 			case recipeURLs <- recipeData:
+<<<<<<< Updated upstream
 				// Log supprimé pour réduire la verbosité (trop de logs)
+=======
+				logRecipeFound(stats.RecipesFound, title)
+>>>>>>> Stashed changes
 			default:
-				log.Printf("⚠️  Channel plein, recette ignorée: '%s'\n", title)
+				logRecipeQueueFull(title)
 			}
 		}
 	})
@@ -462,9 +469,15 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 		RandomDelay: 2 * time.Second, // Délai aléatoire jusqu'à 2 secondes (fonctionnalité native Colly)
 	})
 
+	logConfig("Configuration des délais: 100ms entre chaque requête de page principale (respect du serveur)")
+	logConfig("Limite de parallélisme: 10 requêtes simultanées maximum pour éviter la surcharge")
+
 	// Map pour suivre les pages visitées par catégorie
 	visitedPages := make(map[string]int)
 	var mutex sync.Mutex
+
+	var requestTimes = make(map[string]time.Time)
+	var requestTimesMutex sync.Mutex
 
 	collector.OnRequest(func(r *colly.Request) {
 		// Configurer les headers réalistes pour éviter la détection
@@ -472,6 +485,7 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 
 		// Les délais aléatoires sont gérés automatiquement par Colly via RandomDelay dans LimitRule
 		stats.IncrementMainPageRequest()
+<<<<<<< Updated upstream
 		// Log de requête supprimé pour réduire la verbosité
 	})
 
@@ -485,6 +499,21 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 			time.Sleep(getRandomDelay(10000, 20000))
 		} else {
 			log.Printf("❌ Erreur HTTP %d pour %s: %v\n", statusCode, r.Request.URL, err)
+=======
+		requestTimesMutex.Lock()
+		requestTimes[r.URL.String()] = time.Now()
+		requestTimesMutex.Unlock()
+		logRequest(r.URL.String(), stats.GetTotalRequests())
+	})
+
+	collector.OnResponse(func(r *colly.Response) {
+		requestTimesMutex.Lock()
+		startTime, exists := requestTimes[r.Request.URL.String()]
+		requestTimesMutex.Unlock()
+		if exists {
+			duration := time.Since(startTime)
+			logResponse(r.Request.URL.String(), duration, len(r.Body))
+>>>>>>> Stashed changes
 		}
 	})
 
@@ -504,9 +533,13 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 
 			select {
 			case recipeURLs <- recipeData:
+<<<<<<< Updated upstream
 				// Log supprimé pour réduire la verbosité (trop de logs)
+=======
+				logRecipeFound(stats.RecipesFound, title)
+>>>>>>> Stashed changes
 			default:
-				log.Printf("⚠️  Channel plein, recette ignorée: '%s'\n", title)
+				logRecipeQueueFull(title)
 			}
 		}
 	})
@@ -533,14 +566,19 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 			visitedPages[baseCategory] = pagesVisited + 1
 			mutex.Unlock()
 
+<<<<<<< Updated upstream
 			// Log de pagination supprimé pour réduire la verbosité
+=======
+			logPagination(baseCategory, pagesVisited+1, maxPages, nextPageURL)
+			logPaginationDelay()
+>>>>>>> Stashed changes
 
 			// Visiter la page suivante avec un délai aléatoire plus long
 			randomDelay := getRandomDelay(2000, 5000) // Délai aléatoire entre 2s et 5s
 			time.Sleep(randomDelay)
 			collector.Visit(nextPageURL)
 		} else {
-			log.Printf("✅ Limite de pages atteinte pour %s (%d pages)\n", baseCategory, maxPages)
+			logPaginationLimit(baseCategory, maxPages)
 		}
 	})
 
@@ -558,12 +596,16 @@ func createRecipeCollector(stats *ScrapingStats) *colly.Collector {
 		Delay:       2 * time.Second, // Délai de base augmenté à 2 secondes
 	})
 
+	// Log explicatif pour les délais (seulement une fois)
+	_ = stats
+
 	collector.OnRequest(func(r *colly.Request) {
 		// Configurer les headers réalistes pour éviter la détection
 		configureRealisticHeaders(r)
 
 		// Les délais aléatoires sont gérés automatiquement par Colly via RandomDelay dans LimitRule
 		stats.IncrementRecipeRequest()
+<<<<<<< Updated upstream
 		// Log de requête supprimé pour réduire la verbosité
 	})
 
@@ -578,6 +620,9 @@ func createRecipeCollector(stats *ScrapingStats) *colly.Collector {
 		} else {
 			log.Printf("❌ Erreur HTTP %d pour la recette %s: %v\n", statusCode, r.Request.URL, err)
 		}
+=======
+		logRecipeRequest(r.URL.String(), stats.GetTotalRequests())
+>>>>>>> Stashed changes
 	})
 
 	return collector
@@ -607,7 +652,11 @@ func scrapeRecipeDetails(collector *colly.Collector, recipe *Recipe, completedRe
 		})
 
 		recipe.Ingredients = ingredients
+<<<<<<< Updated upstream
 		// Log d'ingrédients supprimé pour réduire la verbosité
+=======
+		logIngredientsFound(len(ingredients), recipe.Name)
+>>>>>>> Stashed changes
 	})
 
 	// Collecter les instructions - Nouveaux sélecteurs CSS pour AllRecipes 2024
@@ -632,21 +681,34 @@ func scrapeRecipeDetails(collector *colly.Collector, recipe *Recipe, completedRe
 		})
 
 		recipe.Instructions = instructions
+<<<<<<< Updated upstream
 		// Log d'instructions supprimé pour réduire la verbosité
+=======
+		logInstructionsFound(len(instructions), recipe.Name)
+>>>>>>> Stashed changes
 	})
 
 	// Quand la collecte de la recette est terminée
 	collector.OnScraped(func(r *colly.Response) {
 		stats.IncrementRecipesCompleted()
 		completedRecipes <- *recipe
+<<<<<<< Updated upstream
 		// Log de recette complétée supprimé pour réduire la verbosité (trop de logs)
+=======
+		logRecipeCompleted(stats.RecipesCompleted, recipe.Name)
+>>>>>>> Stashed changes
 	})
 }
 
 // processRecipeReusable traite une recette dans un worker réutilisable
 func processRecipeReusable(recipeData RecipeData, stats *ScrapingStats, completedRecipes chan<- Recipe, workerStats *WorkerStats) {
 	startTime := time.Now()
+<<<<<<< Updated upstream
 	// Log de traitement supprimé pour réduire la verbosité
+=======
+	logWorkerStart(workerStats.WorkerID, recipeData.Title)
+	logWorkerSteps()
+>>>>>>> Stashed changes
 
 	// Créer un collecteur dédié pour cette recette
 	recipeCollector := createRecipeCollector(stats)
@@ -661,18 +723,26 @@ func processRecipeReusable(recipeData RecipeData, stats *ScrapingStats, complete
 	scrapeRecipeDetails(recipeCollector, &recipe, completedRecipes, stats)
 
 	// Visiter la page de la recette
+	httpStart := time.Now()
 	err := recipeCollector.Visit(recipeData.URL)
+	httpDuration := time.Since(httpStart)
+
 	if err != nil {
 		stats.IncrementRecipesFailed()
-		log.Printf("❌ Worker #%d - Erreur lors de la visite de la page de recette '%s': %v\n", workerStats.WorkerID, recipeData.Title, err)
+		logWorkerError(workerStats.WorkerID, recipeData.Title, err)
 	} else {
 		// Mettre à jour les stats du worker
 		workerStats.RequestsHandled++
 		workerStats.RecipesProcessed++
+		logWorkerHTTPComplete(httpDuration)
 	}
 
 	duration := time.Since(startTime)
+<<<<<<< Updated upstream
 	_ = duration // Utilisé pour les stats mais pas loggé pour réduire la verbosité
+=======
+	logWorkerComplete(workerStats.WorkerID, duration, httpDuration, recipeData.Title)
+>>>>>>> Stashed changes
 }
 
 // startRecipeProcessor démarre la goroutine qui traite les URLs de recettes
@@ -681,7 +751,11 @@ func startRecipeProcessor(recipeURLs <-chan RecipeData, completedRecipes chan<- 
 		maxWorkers := stats.MaxWorkers // Utiliser le nombre optimal calculé automatiquement
 		semaphore := make(chan struct{}, maxWorkers)
 
+<<<<<<< Updated upstream
 		// Log d'initialisation supprimé pour réduire la verbosité
+=======
+		logWorkerInit(maxWorkers)
+>>>>>>> Stashed changes
 
 		// Créer des workers réutilisables
 		for i := 0; i < maxWorkers; i++ {
@@ -695,10 +769,18 @@ func startRecipeProcessor(recipeURLs <-chan RecipeData, completedRecipes chan<- 
 					StartTime:        time.Now(),
 				}
 
+<<<<<<< Updated upstream
 				// Log de démarrage worker supprimé pour réduire la verbosité
+=======
+				logWorkerStarted(workerID)
+>>>>>>> Stashed changes
 
 				// Le worker traite les recettes en continu
 				for recipeData := range recipeURLs {
+					// Log de la queue
+					queueLength := len(recipeURLs)
+					logWorkerQueue(workerID, queueLength)
+
 					// Acquérir un slot dans le semaphore
 					semaphore <- struct{}{}
 
@@ -716,16 +798,28 @@ func startRecipeProcessor(recipeURLs <-chan RecipeData, completedRecipes chan<- 
 				stats.WorkerStats[workerID] = workerStats
 				stats.Mutex.Unlock()
 
+<<<<<<< Updated upstream
 				// Log de fin worker supprimé pour réduire la verbosité
 			}(i)
 		}
 
 		// Log de workers démarrés supprimé pour réduire la verbosité
+=======
+				logWorkerFinished(workerID, workerStats.RequestsHandled, workerStats.RecipesProcessed, workerStats.Duration)
+			}(i)
+		}
+
+		logWorkersReady(maxWorkers)
+>>>>>>> Stashed changes
 
 		// Attendre que toutes les goroutines se terminent
 		wg.Wait()
 		close(completedRecipes)
+<<<<<<< Updated upstream
 		// Log de fin workers supprimé pour réduire la verbosité
+=======
+		logAllWorkersFinished(maxWorkers)
+>>>>>>> Stashed changes
 	}()
 }
 
@@ -756,71 +850,84 @@ func printDetailedStats(stats *ScrapingStats, filename string) {
 	stats.CalculateFinalStats()
 	detailedStats := stats.GetDetailedStats()
 
+<<<<<<< Updated upstream
 	fmt.Println("\n" + strings.Repeat("=", 80))
 	fmt.Println("📊 STATISTIQUES DÉTAILLÉES DU COLLECTEUR")
 	fmt.Println(strings.Repeat("=", 80))
+=======
+	logDetailedStatsHeader()
+>>>>>>> Stashed changes
 
 	// Performance générale
-	fmt.Printf("⏱️  Durée totale: %v\n", detailedStats.TotalDuration)
-	fmt.Printf("🚀 Requêtes par seconde: %.2f\n", detailedStats.RequestsPerSecond)
-	fmt.Printf("📝 Recettes par seconde: %.2f\n", detailedStats.RecipesPerSecond)
+	logDetailedStatsPerformance(detailedStats.TotalDuration, detailedStats.RequestsPerSecond, detailedStats.RecipesPerSecond)
 
 	// Requêtes
-	fmt.Println("\n🌐 REQUÊTES:")
-	fmt.Printf("   Total: %d\n", detailedStats.TotalRequests)
-	fmt.Printf("   Page principale: %d\n", detailedStats.MainPageRequests)
-	fmt.Printf("   Pages recettes: %d\n", detailedStats.RecipeRequests)
+	logDetailedStatsRequests(detailedStats.TotalRequests, detailedStats.MainPageRequests, detailedStats.RecipeRequests)
 
 	// Recettes
-	fmt.Println("\n📝 RECETTES:")
-	fmt.Printf("   Trouvées: %d\n", detailedStats.RecipesFound)
-	fmt.Printf("   Complétées: %d\n", detailedStats.RecipesCompleted)
-	fmt.Printf("   Échouées: %d\n", detailedStats.RecipesFailed)
-	fmt.Printf("   Taux de succès: %.1f%%\n", float64(detailedStats.RecipesCompleted)/float64(detailedStats.RecipesFound)*100)
+	successRate := float64(detailedStats.RecipesCompleted) / float64(detailedStats.RecipesFound) * 100
+	logDetailedStatsRecipes(detailedStats.RecipesFound, detailedStats.RecipesCompleted, detailedStats.RecipesFailed, successRate)
 
 	// Configuration automatique
 	numLogicalCPU := runtime.NumCPU()
 	numPhysicalCores := getPhysicalCores()
 	adaptiveRatio := calculateAdaptiveRatio(numPhysicalCores)
-	fmt.Println("\n💻 CONFIGURATION AUTOMATIQUE:")
-	fmt.Printf("   Processeurs logiques: %d\n", numLogicalCPU)
-	fmt.Printf("   Cœurs physiques détectés: %d\n", numPhysicalCores)
-	fmt.Printf("   Ratio adaptatif: %d (calculé automatiquement)\n", adaptiveRatio)
-	fmt.Printf("   Calcul: %d cœurs × %d = %d workers\n", numPhysicalCores, adaptiveRatio, numPhysicalCores*adaptiveRatio)
-	fmt.Printf("   Configuration finale: %d workers\n", detailedStats.MaxWorkers)
+	calculatedWorkers := numPhysicalCores * adaptiveRatio
+	logDetailedStatsConfig(numLogicalCPU, numPhysicalCores, adaptiveRatio, calculatedWorkers, detailedStats.MaxWorkers)
 
 	// Détails par worker
 	if len(detailedStats.WorkerStats) > 0 {
-		fmt.Println("\n📈 PERFORMANCE PAR WORKER:")
+		logDetailedStatsWorkersHeader()
 		for workerID, workerStats := range detailedStats.WorkerStats {
-			fmt.Printf("   Worker #%d: %d requêtes, %d recettes, %v\n",
-				workerID, workerStats.RequestsHandled, workerStats.RecipesProcessed, workerStats.Duration)
+			logDetailedStatsWorker(workerID, workerStats.RequestsHandled, workerStats.RecipesProcessed, workerStats.Duration)
 		}
 	}
 
 	// Calculs de performance
 	avgRequestsPerRecipe := float64(detailedStats.RecipeRequests) / float64(detailedStats.RecipesCompleted)
-	fmt.Println("\n💡 ANALYSE DE PERFORMANCE:")
-	fmt.Printf("   Requêtes moyennes par recette: %.1f\n", avgRequestsPerRecipe)
-	fmt.Printf("   Débit estimé: %.0f requêtes/seconde\n", detailedStats.RequestsPerSecond)
-
+	avgTimePerRecipe := 0.0
 	if detailedStats.RecipesPerSecond > 0 {
-		fmt.Printf("   Temps moyen par recette: %.2f secondes\n", 1/detailedStats.RecipesPerSecond)
+		avgTimePerRecipe = 1 / detailedStats.RecipesPerSecond
 	}
+	logDetailedStatsAnalysis(avgRequestsPerRecipe, detailedStats.RequestsPerSecond, avgTimePerRecipe)
 
-	fmt.Printf("\n💾 Fichier de sortie: %s\n", filename)
-	fmt.Println(strings.Repeat("=", 80))
+	logDetailedStatsFooter(filename)
 }
 
 // printRealTimeStats affiche les statistiques en temps réel (désactivé pour réduire la verbosité)
 func printRealTimeStats(stats *ScrapingStats) {
+<<<<<<< Updated upstream
 	// Logs de temps réel désactivés pour réduire la verbosité
 	// Les statistiques finales sont toujours affichées à la fin
+=======
+	ticker := time.NewTicker(5 * time.Second)
+	go func() {
+		for range ticker.C {
+			stats.Mutex.RLock()
+			elapsed := time.Since(stats.StartTime)
+			requestsPerSec := float64(stats.TotalRequests) / elapsed.Seconds()
+			recipesPerSec := float64(stats.RecipesCompleted) / elapsed.Seconds()
+			activeWorkers := len(stats.WorkerStats)
+			stats.Mutex.RUnlock()
+
+			logRealTimeStats(elapsed, stats.TotalRequests, requestsPerSec,
+				stats.RecipesCompleted, stats.RecipesFound, recipesPerSec, activeWorkers)
+		}
+	}()
+>>>>>>> Stashed changes
 }
 
 // main est la fonction principale du collecteur
 // Elle orchestre tout le processus de collecte : collecte des URLs, traitement des recettes, et sauvegarde
 func main() {
+	// ===== PHASE 0: INITIALISATION DU LOGGING =====
+	// Initialiser le système de logging vers un fichier
+	if err := initLogger(); err != nil {
+		fmt.Fprintf(os.Stderr, "Erreur d'initialisation du logging: %v\n", err)
+		os.Exit(1)
+	}
+	defer closeLogger()
+
 	// ===== PHASE 1: INITIALISATION =====
 	// Afficher les informations de version et de build
 	printVersionInfo()
@@ -834,17 +941,41 @@ func main() {
 	// Configuration automatique basée sur les ressources CPU
 	optimalWorkers := calculateOptimalWorkers(minWorkers, maxWorkers)
 
+<<<<<<< Updated upstream
 	// Configuration automatique (logs supprimés pour réduire la verbosité)
+=======
+	// Afficher la configuration automatique détaillée
+	numLogicalCPU := runtime.NumCPU()
+	numPhysicalCores := getPhysicalCores()
+	adaptiveRatio := calculateAdaptiveRatio(numPhysicalCores)
+	calculatedWorkers := numPhysicalCores * adaptiveRatio
+	logResourceDetection(numLogicalCPU, numPhysicalCores, adaptiveRatio, calculatedWorkers)
+	if calculatedWorkers < minWorkers {
+		logResourceLimit(calculatedWorkers, minWorkers, "minimum")
+	} else if calculatedWorkers > maxWorkers {
+		logResourceLimit(calculatedWorkers, maxWorkers, "maximum")
+	} else {
+		logResourceOptimal(optimalWorkers)
+	}
+>>>>>>> Stashed changes
 
 	// Créer l'objet de statistiques thread-safe
 	stats := NewScrapingStats(optimalWorkers)
 
+<<<<<<< Updated upstream
 	// Note: Dans Go 1.20+, le générateur global rand est automatiquement initialisé
 	// Pas besoin d'appeler rand.Seed() qui est déprécié
 
 	// Afficher les informations de démarrage (simplifié)
 	log.Printf("🚀 Collecteur démarré avec %d workers\n", optimalWorkers)
 	log.Printf("📊 Configuration: %d pages/catégorie, %d recettes/page max\n", maxPagesPerCategory, maxRecipesPerPage)
+=======
+	// Afficher les informations de démarrage
+	buildInfo := getBuildInfo()
+	logVersionInfo(optimalWorkers, version, gitCommit, buildTime, buildInfo.GoVersion, fmt.Sprintf("%s/%s", buildInfo.OS, buildInfo.Arch))
+	logConfigInfo(maxPagesPerCategory, maxRecipesPerPage)
+	logWhySlow(maxPagesPerCategory, maxRecipesPerPage, optimalWorkers)
+>>>>>>> Stashed changes
 
 	// Démarrer l'affichage des statistiques en temps réel (désactivé pour réduire la verbosité)
 	printRealTimeStats(stats)
@@ -889,6 +1020,7 @@ func main() {
 		"https://www.allrecipes.com/recipes/1569/everyday-cooking/on-the-go/tailgating/",     // Tailgating
 	}
 
+<<<<<<< Updated upstream
 	// ===== PHASE 6: VISITE INITIALE DE LA PAGE D'ACCUEIL =====
 	// Visiter la page d'accueil pour obtenir les cookies de session (important pour contourner Cloudflare)
 	log.Printf("Visite de la page d'accueil pour obtenir les cookies de session...\n")
@@ -913,35 +1045,86 @@ func main() {
 	for i, category := range categories {
 		// Log de catégorie supprimé pour réduire la verbosité
 		_ = i // Variable utilisée mais pas loggée
+=======
+	// ===== PHASE 6: EXÉCUTION DU SCRAPING =====
+	// Démarrer le scraping de toutes les catégories définies
+	categoryStartTime := time.Now()
+	logScrapingStart(len(categories))
+	estimatedPages := len(categories) * maxPagesPerCategory
+	estimatedRecipes := len(categories) * maxPagesPerCategory * maxRecipesPerPage
+	estimatedSeconds := (estimatedPages*100 + estimatedRecipes*50) / 1000
+	logScrapingEstimate(estimatedPages, estimatedRecipes, estimatedSeconds)
+
+	for i, category := range categories {
+		categoryPhaseStart := time.Now()
+		logCategoryStart(i+1, len(categories), category)
+		logCategoryInfo(maxPagesPerCategory, maxRecipesPerPage)
+>>>>>>> Stashed changes
 
 		// Visiter la catégorie (avec pagination automatique)
 		err := mainCollector.Visit(category)
 		if err != nil {
-			log.Printf("⚠️  Erreur lors de la visite de la catégorie %s: %v\n", category, err)
+			logCategoryError(category, err)
 			continue // Continuer avec la catégorie suivante en cas d'erreur
 		}
 
+<<<<<<< Updated upstream
 		// Pause respectueuse entre les catégories avec délai aléatoire augmenté
 		randomDelay := getRandomDelay(5000, 10000) // Délai aléatoire entre 5s et 10s
 		time.Sleep(randomDelay)
 	}
 
 	// ===== PHASE 8: FINALISATION =====
+=======
+		categoryDuration := time.Since(categoryPhaseStart)
+		logCategoryComplete(i+1, len(categories), categoryDuration)
+
+		// Pause respectueuse entre les catégories pour éviter de surcharger le serveur
+		if i < len(categories)-1 {
+			logCategoryPause()
+			time.Sleep(1 * time.Second)
+		}
+	}
+
+	totalCategoryTime := time.Since(categoryStartTime)
+	logCategoryPhaseComplete(totalCategoryTime)
+
+	// ===== PHASE 7: FINALISATION =====
+>>>>>>> Stashed changes
 	// Fermer le channel des URLs pour signaler qu'il n'y a plus de recettes à traiter
+	stats.Mutex.RLock()
+	recipesFound := stats.RecipesFound
+	recipesCompleted := stats.RecipesCompleted
+	stats.Mutex.RUnlock()
+	inProgress := recipesFound - recipesCompleted
+	logProcessingPhase(recipesFound, recipesCompleted, inProgress)
+
+	if recipesFound > recipesCompleted {
+		estimatedTime := time.Duration(recipesFound-recipesCompleted) * 110 * time.Millisecond // ~110ms par recette (50ms délai + 60ms traitement)
+		logProcessingEstimate(recipesFound-recipesCompleted, estimatedTime)
+	}
+
+	logProcessingClose()
 	close(recipeURLs)
 
 	// Attendre que toutes les recettes soient collectées (signal du collector)
 	<-done
+	logProcessingComplete()
 
 	// ===== PHASE 9: SAUVEGARDE ET STATISTIQUES =====
 	// Sauvegarder toutes les recettes dans un fichier JSON
 	filename := "data.json"
+	logSaveStart(len(recipes), filename)
+	saveStart := time.Now()
 	recipesMutex.RLock()
 	err = saveRecipesToFile(recipes, filename)
 	recipesMutex.RUnlock()
+	saveDuration := time.Since(saveStart)
 
-	if err != nil {
-		log.Printf("Erreur lors de l'enregistrement des recettes: %v\n", err)
+	if err == nil {
+		logSaveComplete(saveDuration)
+	} else {
+		logSaveError(err)
 		return
 	}
 
@@ -949,5 +1132,9 @@ func main() {
 	printDetailedStats(stats, filename)
 
 	// Afficher les informations de build dans les logs finaux
+<<<<<<< Updated upstream
 	log.Printf("✅ Collecte terminée\n")
+=======
+	logScrapingComplete(version, gitCommit)
+>>>>>>> Stashed changes
 }
