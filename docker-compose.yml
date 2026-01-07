@@ -10,7 +10,7 @@ services:
       MONGO_INITDB_DATABASE: recipes
       TZ: Europe/Paris
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"  # Limité à localhost pour la sécurité
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
@@ -42,7 +42,7 @@ services:
       - LOG_LEVEL=info
       - TZ=Europe/Paris
     ports:
-      - "127.0.0.1:8082:8080"
+      - "0.0.0.0:8082:8080"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -95,7 +95,7 @@ services:
       ME_CONFIG_BASICAUTH_PASSWORD: admin123
       TZ: Europe/Paris
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"  # Limité à localhost pour la sécurité
     depends_on:
       mongodb:
         condition: service_healthy
