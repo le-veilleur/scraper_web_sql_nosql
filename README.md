@@ -12,6 +12,7 @@ Une solution complète développée pour le restaurant Hótwings afin d'étendre
 ## 📋 Table des matières
 
 - [🎯 Aperçu du projet](#-aperçu-du-projet)
+- [🛠️ Technologies utilisées](#️-technologies-utilisées)
 - [✨ Fonctionnalités](#-fonctionnalités)
 - [🏗️ Architecture](#️-architecture)
 - [🚀 Démarrage rapide](#-démarrage-rapide)
@@ -40,6 +41,71 @@ Le restaurant **Hótwings** souhaite développer son activité avec un service d
 - ✅ **CI/CD automatisé** avec GitHub Actions
 - ✅ **Containerisation** Docker complète
 - ✅ **Cross-platform** binaires pour Linux, Windows, macOS
+
+## 🛠️ Technologies utilisées
+
+### Langages et Runtime
+- **Go (Golang)** 1.22+ - Langage de programmation principal
+- **Bash** - Scripts d'automatisation et de déploiement
+
+### Frameworks et Bibliothèques Go
+- **Fiber v2** (`github.com/gofiber/fiber/v2`) - Framework web HTTP rapide et Express-like
+- **Colly** (`github.com/gocolly/colly`) - Framework de web scraping/scraping
+- **MongoDB Driver** (`go.mongodb.org/mongo-driver`) - Driver officiel MongoDB pour Go
+- **godotenv** (`github.com/joho/godotenv`) - Gestion des variables d'environnement depuis `.env`
+- **testify** (`github.com/stretchr/testify`) - Framework de tests avec assertions
+
+### Bases de données
+- **MongoDB 7.0** - Base de données NoSQL principale
+- **Mongo Express** - Interface web pour la gestion de MongoDB
+
+### Containerisation et Orchestration
+- **Docker** - Containerisation des services
+- **Docker Compose** - Orchestration multi-conteneurs
+- **Dockerfile** - Images personnalisées pour API et scraper
+
+### CI/CD et Déploiement
+- **GitHub Actions** - Pipeline CI/CD automatisé
+- **SSH** - Déploiement automatisé sur VPS
+- **Git** - Contrôle de version
+
+### Outils de développement
+- **Make** - Automatisation des tâches de build et de test
+- **Go Modules** - Gestion des dépendances
+- **Bash Scripts** - Scripts d'automatisation (`build.sh`, `test_metrics.sh`, etc.)
+
+### Formats et Protocoles
+- **JSON** - Format d'échange de données
+- **REST API** - Architecture API RESTful
+- **HTTP/HTTPS** - Protocoles de communication
+
+### Infrastructure et Services
+- **VPS (Virtual Private Server)** - Serveur de production
+- **Linux** - Système d'exploitation serveur
+- **Port 8082** - Port par défaut de l'API
+- **Port 27017/27018** - Port MongoDB
+- **Port 8081** - Port Mongo Express
+
+### Techniques et Concepts
+- **Goroutines** - Concurrence et parallélisme en Go
+- **Channels** - Communication entre goroutines
+- **Sync (WaitGroups, Mutexes)** - Synchronisation des goroutines
+- **Web Scraping** - Collecte automatisée de données web
+- **Anti-bot Measures** - Techniques anti-détection (User-Agent rotation, headers réalistes, délais aléatoires)
+- **Structured Logging** - Système de logs structurés
+- **Health Checks** - Monitoring de l'état des services
+- **Metrics** - Collecte de métriques de performance
+
+### Middleware et Sécurité
+- **CORS** - Cross-Origin Resource Sharing
+- **Recovery** - Gestion des panics
+- **Logger** - Middleware de logging HTTP
+- **Environment Variables** - Configuration via variables d'environnement
+
+### Monitoring et Observabilité
+- **Health Endpoints** (`/health`, `/version`, `/metrics`)
+- **Structured Logs** - Logs JSON structurés
+- **Performance Metrics** - Métriques de performance en temps réel
 
 ## ✨ Fonctionnalités
 
