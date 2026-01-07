@@ -10,7 +10,7 @@ services:
       MONGO_INITDB_DATABASE: recipes
       TZ: Europe/Paris
     ports:
-      - "127.0.0.1:27017:27017"  # Limité à localhost pour la sécurité
+      - "127.0.0.1:27018:27017"  # Limité à localhost pour la sécurité (port 27018 pour éviter conflit avec Portfolio)
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb

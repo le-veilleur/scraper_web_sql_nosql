@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"runtime"
 	"strconv"
@@ -22,15 +23,7 @@ var (
 	buildTime = "unknown" // Timestamp de compilation
 )
 
-// BuildInfo contient les informations de build pour le debugging et la traçabilité
-type BuildInfo struct {
-	Version   string `json:"version"`    // Version de l'application
-	GitCommit string `json:"git_commit"` // Hash du commit Git
-	BuildTime string `json:"build_time"` // Timestamp de compilation
-	GoVersion string `json:"go_version"` // Version de Go utilisée
-	OS        string `json:"os"`         // Système d'exploitation
-	Arch      string `json:"arch"`       // Architecture (amd64, arm64, etc.)
-}
+// BuildInfo supprimé - non utilisé après réduction des logs
 
 // Recipe représente une recette complète avec tous ses détails
 type Recipe struct {
@@ -308,26 +301,72 @@ func calculateOptimalWorkers(minWorkers, maxWorkers int) int {
 	return optimalWorkers
 }
 
-// printVersionInfo affiche les informations de version
+// printVersionInfo affiche les informations de version (simplifié)
 func printVersionInfo() {
-	fmt.Printf("Go MongoDB Scrapper\n")
-	fmt.Printf("Version: %s\n", version)
-	fmt.Printf("Git Commit: %s\n", gitCommit)
-	fmt.Printf("Build Time: %s\n", buildTime)
-	fmt.Printf("Go Version: %s\n", runtime.Version())
-	fmt.Printf("OS/Arch: %s/%s\n\n", runtime.GOOS, runtime.GOARCH)
+	// Logs de version supprimés pour réduire la verbosité
 }
 
-// getBuildInfo retourne les informations de build
-func getBuildInfo() BuildInfo {
-	return BuildInfo{
-		Version:   version,
-		GitCommit: gitCommit,
-		BuildTime: buildTime,
-		GoVersion: runtime.Version(),
-		OS:        runtime.GOOS,
-		Arch:      runtime.GOARCH,
+// getBuildInfo supprimé - non utilisé après réduction des logs
+
+// userAgents contient une liste de User-Agents réalistes pour simuler différents navigateurs
+var userAgents = []string{
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+}
+
+var userAgentMutex sync.Mutex
+var userAgentIndex = 0
+
+// getRandomUserAgent retourne un User-Agent aléatoire de la liste
+func getRandomUserAgent() string {
+	userAgentMutex.Lock()
+	defer userAgentMutex.Unlock()
+
+	// Utiliser un index rotatif pour distribuer les User-Agents
+	userAgentIndex = (userAgentIndex + 1) % len(userAgents)
+	return userAgents[userAgentIndex]
+}
+
+// configureRealisticHeaders configure les headers HTTP pour simuler un navigateur réel
+func configureRealisticHeaders(r *colly.Request) {
+	// User-Agent réaliste
+	r.Headers.Set("User-Agent", getRandomUserAgent())
+
+	// Headers standards d'un navigateur moderne
+	r.Headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+	r.Headers.Set("Accept-Language", "en-US,en;q=0.9,fr;q=0.8")
+	r.Headers.Set("Accept-Encoding", "gzip, deflate, br")
+	r.Headers.Set("DNT", "1")
+	r.Headers.Set("Connection", "keep-alive")
+	r.Headers.Set("Upgrade-Insecure-Requests", "1")
+	r.Headers.Set("Sec-Fetch-Dest", "document")
+	r.Headers.Set("Sec-Fetch-Mode", "navigate")
+	r.Headers.Set("Sec-Fetch-Site", "none")
+	r.Headers.Set("Sec-Fetch-User", "?1")
+	r.Headers.Set("Cache-Control", "max-age=0")
+
+	// Ajouter un Referer si on a une URL précédente
+	if r.URL != nil && r.URL.Host != "" {
+		// Pour les pages internes, utiliser le domaine comme referer
+		if strings.Contains(r.URL.String(), "allrecipes.com") {
+			r.Headers.Set("Referer", "https://www.allrecipes.com/")
+		}
 	}
+}
+
+// getRandomDelay retourne un délai aléatoire entre min et max millisecondes
+func getRandomDelay(minMs, maxMs int) time.Duration {
+	if maxMs <= minMs {
+		return time.Duration(minMs) * time.Millisecond
+	}
+	delay := minMs + rand.Intn(maxMs-minMs+1)
+	return time.Duration(delay) * time.Millisecond
 }
 
 // createMainCollector crée et configure le collecteur principal pour les pages de catégories
@@ -336,16 +375,37 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 	collector := colly.NewCollector()
 
 	// Configuration des limites pour être respectueux du serveur
+	// Délais augmentés et parallélisme réduit pour éviter la détection
 	collector.Limit(&colly.LimitRule{
-		DomainGlob:  "*",                   // Appliquer à tous les domaines
-		Parallelism: 5,                     // Maximum 5 requêtes simultanées
-		Delay:       50 * time.Millisecond, // Délai de 50ms entre les requêtes
+		DomainGlob:  "*",                    // Appliquer à tous les domaines
+		Parallelism: 3,                      // Réduit à 3 requêtes simultanées
+		Delay:       500 * time.Millisecond, // Délai de base de 500ms entre les requêtes
 	})
 
 	// Handler appelé avant chaque requête HTTP
 	collector.OnRequest(func(r *colly.Request) {
+		// Configurer les headers réalistes pour éviter la détection
+		configureRealisticHeaders(r)
+
+		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
+		randomDelay := getRandomDelay(200, 800) // Délai aléatoire entre 200ms et 800ms
+		time.Sleep(randomDelay)
+
 		stats.IncrementMainPageRequest() // Incrémenter le compteur de requêtes
-		log.Printf("🌐 Requête principale vers %s (Total: %d)\n", r.URL, stats.GetTotalRequests())
+		// Log de requête supprimé pour réduire la verbosité
+	})
+
+	// Gérer les erreurs HTTP (403, 429, etc.)
+	collector.OnError(func(r *colly.Response, err error) {
+		statusCode := r.StatusCode
+		if statusCode == 403 || statusCode == 429 {
+			log.Printf("⚠️  Erreur %d détectée pour %s: %v\n", statusCode, r.Request.URL, err)
+			log.Printf("🔄 Attente avant retry...\n")
+			// Attendre plus longtemps en cas d'erreur
+			time.Sleep(getRandomDelay(3000, 6000))
+		} else {
+			log.Printf("❌ Erreur HTTP %d pour %s: %v\n", statusCode, r.Request.URL, err)
+		}
 	})
 
 	// Handler appelé pour chaque élément HTML correspondant au sélecteur CSS
@@ -370,7 +430,7 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 			// Envoyer la recette dans le channel (non-bloquant)
 			select {
 			case recipeURLs <- recipeData:
-				log.Printf("📝 Recette #%d ajoutée à la queue: '%s'\n", stats.RecipesFound, title)
+				// Log supprimé pour réduire la verbosité (trop de logs)
 			default:
 				log.Printf("⚠️  Channel plein, recette ignorée: '%s'\n", title)
 			}
@@ -383,10 +443,12 @@ func createMainCollector(stats *ScrapingStats, recipeURLs chan<- RecipeData) *co
 // createMainCollectorWithPagination crée un collecteur avec support de la pagination
 func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- RecipeData, maxPages int) *colly.Collector {
 	collector := colly.NewCollector()
+
+	// Configuration des limites avec délais plus longs pour éviter la détection
 	collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
-		Parallelism: 10,                     // Réduit pour éviter de surcharger le serveur
-		Delay:       100 * time.Millisecond, // Délai augmenté pour être plus respectueux
+		Parallelism: 3,                      // Réduit à 3 pour éviter la surcharge
+		Delay:       800 * time.Millisecond, // Délai de base augmenté à 800ms
 	})
 
 	// Map pour suivre les pages visitées par catégorie
@@ -394,8 +456,28 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 	var mutex sync.Mutex
 
 	collector.OnRequest(func(r *colly.Request) {
+		// Configurer les headers réalistes pour éviter la détection
+		configureRealisticHeaders(r)
+
+		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
+		randomDelay := getRandomDelay(300, 1000) // Délai aléatoire entre 300ms et 1000ms
+		time.Sleep(randomDelay)
+
 		stats.IncrementMainPageRequest()
-		log.Printf("🌐 Requête principale vers %s (Total: %d)\n", r.URL, stats.GetTotalRequests())
+		// Log de requête supprimé pour réduire la verbosité
+	})
+
+	// Gérer les erreurs HTTP (403, 429, etc.)
+	collector.OnError(func(r *colly.Response, err error) {
+		statusCode := r.StatusCode
+		if statusCode == 403 || statusCode == 429 {
+			log.Printf("⚠️  Erreur %d détectée pour %s: %v\n", statusCode, r.Request.URL, err)
+			log.Printf("🔄 Attente avant retry...\n")
+			// Attendre plus longtemps en cas d'erreur
+			time.Sleep(getRandomDelay(3000, 6000))
+		} else {
+			log.Printf("❌ Erreur HTTP %d pour %s: %v\n", statusCode, r.Request.URL, err)
+		}
 	})
 
 	// Gérer les recettes sur la page actuelle
@@ -414,7 +496,7 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 
 			select {
 			case recipeURLs <- recipeData:
-				log.Printf("📝 Recette #%d ajoutée à la queue: '%s'\n", stats.RecipesFound, title)
+				// Log supprimé pour réduire la verbosité (trop de logs)
 			default:
 				log.Printf("⚠️  Channel plein, recette ignorée: '%s'\n", title)
 			}
@@ -443,10 +525,11 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 			visitedPages[baseCategory] = pagesVisited + 1
 			mutex.Unlock()
 
-			log.Printf("📄 Page suivante trouvée pour %s (page %d/%d): %s\n", baseCategory, pagesVisited+1, maxPages, nextPageURL)
+			// Log de pagination supprimé pour réduire la verbosité
 
-			// Visiter la page suivante avec un délai
-			time.Sleep(500 * time.Millisecond)
+			// Visiter la page suivante avec un délai aléatoire plus long
+			randomDelay := getRandomDelay(1000, 2000) // Délai aléatoire entre 1s et 2s
+			time.Sleep(randomDelay)
 			collector.Visit(nextPageURL)
 		} else {
 			log.Printf("✅ Limite de pages atteinte pour %s (%d pages)\n", baseCategory, maxPages)
@@ -456,24 +539,46 @@ func createMainCollectorWithPagination(stats *ScrapingStats, recipeURLs chan<- R
 	return collector
 }
 
-// createRecipeCollector crée un collecteur pour scraper une recette individuelle
+// createRecipeCollector crée un collecteur pour collecter une recette individuelle
 func createRecipeCollector(stats *ScrapingStats) *colly.Collector {
 	collector := colly.NewCollector()
+
+	// Configuration avec délais plus longs pour éviter la détection
 	collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
 		Parallelism: 1,
-		Delay:       50 * time.Millisecond,
+		Delay:       600 * time.Millisecond, // Délai de base augmenté à 600ms
 	})
 
 	collector.OnRequest(func(r *colly.Request) {
+		// Configurer les headers réalistes pour éviter la détection
+		configureRealisticHeaders(r)
+
+		// Ajouter un délai aléatoire supplémentaire pour simuler un comportement humain
+		randomDelay := getRandomDelay(200, 600) // Délai aléatoire entre 200ms et 600ms
+		time.Sleep(randomDelay)
+
 		stats.IncrementRecipeRequest()
-		log.Printf("🔍 Requête recette vers %s (Total: %d)\n", r.URL, stats.GetTotalRequests())
+		// Log de requête supprimé pour réduire la verbosité
+	})
+
+	// Gérer les erreurs HTTP (403, 429, etc.)
+	collector.OnError(func(r *colly.Response, err error) {
+		statusCode := r.StatusCode
+		if statusCode == 403 || statusCode == 429 {
+			log.Printf("⚠️  Erreur %d détectée pour la recette %s: %v\n", statusCode, r.Request.URL, err)
+			log.Printf("🔄 Attente avant retry...\n")
+			// Attendre plus longtemps en cas d'erreur
+			time.Sleep(getRandomDelay(2000, 5000))
+		} else {
+			log.Printf("❌ Erreur HTTP %d pour la recette %s: %v\n", statusCode, r.Request.URL, err)
+		}
 	})
 
 	return collector
 }
 
-// scrapeRecipeDetails configure les handlers pour extraire les détails d'une recette
+// scrapeRecipeDetails configure les handlers pour collecter les détails d'une recette
 func scrapeRecipeDetails(collector *colly.Collector, recipe *Recipe, completedRecipes chan<- Recipe, stats *ScrapingStats) {
 	// Collecter les ingrédients - Nouveaux sélecteurs CSS pour AllRecipes 2024
 	collector.OnHTML("ul.mm-recipes-structured-ingredients__list", func(e *colly.HTMLElement) {
@@ -497,7 +602,7 @@ func scrapeRecipeDetails(collector *colly.Collector, recipe *Recipe, completedRe
 		})
 
 		recipe.Ingredients = ingredients
-		log.Printf("🔍 Ingrédients trouvés: %d pour '%s'\n", len(ingredients), recipe.Name)
+		// Log d'ingrédients supprimé pour réduire la verbosité
 	})
 
 	// Collecter les instructions - Nouveaux sélecteurs CSS pour AllRecipes 2024
@@ -522,21 +627,21 @@ func scrapeRecipeDetails(collector *colly.Collector, recipe *Recipe, completedRe
 		})
 
 		recipe.Instructions = instructions
-		log.Printf("🔍 Instructions trouvées: %d pour '%s'\n", len(instructions), recipe.Name)
+		// Log d'instructions supprimé pour réduire la verbosité
 	})
 
-	// Quand le scraping de la recette est terminé
+	// Quand la collecte de la recette est terminée
 	collector.OnScraped(func(r *colly.Response) {
 		stats.IncrementRecipesCompleted()
 		completedRecipes <- *recipe
-		log.Printf("✅ Recette #%d complétée: '%s'\n", stats.RecipesCompleted, recipe.Name)
+		// Log de recette complétée supprimé pour réduire la verbosité (trop de logs)
 	})
 }
 
 // processRecipeReusable traite une recette dans un worker réutilisable
 func processRecipeReusable(recipeData RecipeData, stats *ScrapingStats, completedRecipes chan<- Recipe, workerStats *WorkerStats) {
 	startTime := time.Now()
-	log.Printf("🚀 Worker #%d traite la recette: %s\n", workerStats.WorkerID, recipeData.Title)
+	// Log de traitement supprimé pour réduire la verbosité
 
 	// Créer un collecteur dédié pour cette recette
 	recipeCollector := createRecipeCollector(stats)
@@ -547,7 +652,7 @@ func processRecipeReusable(recipeData RecipeData, stats *ScrapingStats, complete
 		Image: recipeData.Image,
 	}
 
-	// Configurer le scraping des détails
+	// Configurer la collecte des détails
 	scrapeRecipeDetails(recipeCollector, &recipe, completedRecipes, stats)
 
 	// Visiter la page de la recette
@@ -562,7 +667,7 @@ func processRecipeReusable(recipeData RecipeData, stats *ScrapingStats, complete
 	}
 
 	duration := time.Since(startTime)
-	log.Printf("⏱️  Worker #%d terminé en %v: %s\n", workerStats.WorkerID, duration, recipeData.Title)
+	_ = duration // Utilisé pour les stats mais pas loggé pour réduire la verbosité
 }
 
 // startRecipeProcessor démarre la goroutine qui traite les URLs de recettes
@@ -571,7 +676,7 @@ func startRecipeProcessor(recipeURLs <-chan RecipeData, completedRecipes chan<- 
 		maxWorkers := stats.MaxWorkers // Utiliser le nombre optimal calculé automatiquement
 		semaphore := make(chan struct{}, maxWorkers)
 
-		log.Printf("🏭 Initialisation de %d workers pour le traitement des recettes\n", maxWorkers)
+		// Log d'initialisation supprimé pour réduire la verbosité
 
 		// Créer des workers réutilisables
 		for i := 0; i < maxWorkers; i++ {
@@ -585,7 +690,7 @@ func startRecipeProcessor(recipeURLs <-chan RecipeData, completedRecipes chan<- 
 					StartTime:        time.Now(),
 				}
 
-				log.Printf("🚀 Worker #%d démarré\n", workerID)
+				// Log de démarrage worker supprimé pour réduire la verbosité
 
 				// Le worker traite les recettes en continu
 				for recipeData := range recipeURLs {
@@ -606,17 +711,16 @@ func startRecipeProcessor(recipeURLs <-chan RecipeData, completedRecipes chan<- 
 				stats.WorkerStats[workerID] = workerStats
 				stats.Mutex.Unlock()
 
-				log.Printf("🏁 Worker #%d terminé: %d requêtes, %d recettes, %v\n",
-					workerID, workerStats.RequestsHandled, workerStats.RecipesProcessed, workerStats.Duration)
+				// Log de fin worker supprimé pour réduire la verbosité
 			}(i)
 		}
 
-		log.Printf("📊 %d workers réutilisables démarrés et prêts à traiter les recettes\n", maxWorkers)
+		// Log de workers démarrés supprimé pour réduire la verbosité
 
 		// Attendre que toutes les goroutines se terminent
 		wg.Wait()
 		close(completedRecipes)
-		log.Printf("🏁 Tous les %d workers ont terminé\n", maxWorkers)
+		// Log de fin workers supprimé pour réduire la verbosité
 	}()
 }
 
@@ -648,7 +752,7 @@ func printDetailedStats(stats *ScrapingStats, filename string) {
 	detailedStats := stats.GetDetailedStats()
 
 	fmt.Println("\n" + strings.Repeat("=", 80))
-	fmt.Println("📊 STATISTIQUES DÉTAILLÉES DU SCRAPER")
+	fmt.Println("📊 STATISTIQUES DÉTAILLÉES DU COLLECTEUR")
 	fmt.Println(strings.Repeat("=", 80))
 
 	// Performance générale
@@ -703,67 +807,41 @@ func printDetailedStats(stats *ScrapingStats, filename string) {
 	fmt.Println(strings.Repeat("=", 80))
 }
 
-// printRealTimeStats affiche les statistiques en temps réel
+// printRealTimeStats affiche les statistiques en temps réel (désactivé pour réduire la verbosité)
 func printRealTimeStats(stats *ScrapingStats) {
-	ticker := time.NewTicker(5 * time.Second)
-	go func() {
-		for range ticker.C {
-			stats.Mutex.RLock()
-			elapsed := time.Since(stats.StartTime)
-			requestsPerSec := float64(stats.TotalRequests) / elapsed.Seconds()
-			recipesPerSec := float64(stats.RecipesCompleted) / elapsed.Seconds()
-			stats.Mutex.RUnlock()
-
-			fmt.Printf("📊 [%v] Req: %d (%.1f/s) | Recettes: %d/%d (%.1f/s) | Workers: %d\n",
-				elapsed.Round(time.Second), stats.TotalRequests, requestsPerSec,
-				stats.RecipesCompleted, stats.RecipesFound, recipesPerSec, len(stats.WorkerStats))
-		}
-	}()
+	// Logs de temps réel désactivés pour réduire la verbosité
+	// Les statistiques finales sont toujours affichées à la fin
 }
 
-// main est la fonction principale du scraper
-// Elle orchestre tout le processus de scraping : collecte des URLs, traitement des recettes, et sauvegarde
+// main est la fonction principale du collecteur
+// Elle orchestre tout le processus de collecte : collecte des URLs, traitement des recettes, et sauvegarde
 func main() {
 	// ===== PHASE 1: INITIALISATION =====
 	// Afficher les informations de version et de build
 	printVersionInfo()
 
-	// Configuration du scraper - paramètres ajustables
+	// Configuration du collecteur - paramètres ajustables
 	const minWorkers = 1          // Nombre minimum de workers
 	const maxWorkers = 100        // Nombre maximum de workers
-	const maxPagesPerCategory = 5 // Nombre maximum de pages à scraper par catégorie
+	const maxPagesPerCategory = 5 // Nombre maximum de pages à collecter par catégorie
 	const maxRecipesPerPage = 20  // Estimation du nombre de recettes par page
 
 	// Configuration automatique basée sur les ressources CPU
 	optimalWorkers := calculateOptimalWorkers(minWorkers, maxWorkers)
 
-	// Afficher la configuration automatique détaillée
-	numLogicalCPU := runtime.NumCPU()
-	numPhysicalCores := getPhysicalCores()
-	adaptiveRatio := calculateAdaptiveRatio(numPhysicalCores)
-	calculatedWorkers := numPhysicalCores * adaptiveRatio
-	log.Printf("🔍 DÉTECTION AUTOMATIQUE DES RESSOURCES:")
-	log.Printf("   💻 Processeurs logiques: %d", numLogicalCPU)
-	log.Printf("   🔧 Cœurs physiques détectés: %d", numPhysicalCores)
-	log.Printf("   ⚙️  Ratio adaptatif: %d (calculé automatiquement)", adaptiveRatio)
-	log.Printf("   🧮 Calcul: %d cœurs × %d = %d workers", numPhysicalCores, adaptiveRatio, calculatedWorkers)
-	if calculatedWorkers < minWorkers {
-		log.Printf("   ⚠️  Limite minimum appliquée: %d → %d workers", calculatedWorkers, minWorkers)
-	} else if calculatedWorkers > maxWorkers {
-		log.Printf("   ⚠️  Limite maximum appliquée: %d → %d workers", calculatedWorkers, maxWorkers)
-	} else {
-		log.Printf("   ✅ Configuration optimale: %d workers", optimalWorkers)
-	}
+	// Configuration automatique (logs supprimés pour réduire la verbosité)
 
 	// Créer l'objet de statistiques thread-safe
 	stats := NewScrapingStats(optimalWorkers)
 
-	// Afficher les informations de démarrage
-	log.Printf("🚀 Démarrage du script de scraping avec %d goroutines (version %s)...\n", optimalWorkers, version)
-	log.Printf("📋 Build info: %+v\n", getBuildInfo())
+	// Note: Dans Go 1.20+, le générateur global rand est automatiquement initialisé
+	// Pas besoin d'appeler rand.Seed() qui est déprécié
+
+	// Afficher les informations de démarrage (simplifié)
+	log.Printf("🚀 Collecteur démarré avec %d workers\n", optimalWorkers)
 	log.Printf("📊 Configuration: %d pages/catégorie, %d recettes/page max\n", maxPagesPerCategory, maxRecipesPerPage)
 
-	// Démarrer l'affichage des statistiques en temps réel (goroutine séparée)
+	// Démarrer l'affichage des statistiques en temps réel (désactivé pour réduire la verbosité)
 	printRealTimeStats(stats)
 
 	// ===== PHASE 2: CONFIGURATION DES CHANNELS =====
@@ -790,8 +868,8 @@ func main() {
 	// Démarrer les workers qui traitent les URLs de recettes
 	startRecipeProcessor(recipeURLs, completedRecipes, stats, &wg)
 
-	// ===== PHASE 5: DÉFINITION DES CATÉGORIES À SCRAPER =====
-	// Liste des catégories de recettes AllRecipes à scraper
+	// ===== PHASE 5: DÉFINITION DES CATÉGORIES À COLLECTER =====
+	// Liste des catégories de recettes AllRecipes à collecter
 	// Chaque catégorie sera visitée avec pagination automatique
 	categories := []string{
 		"https://www.allrecipes.com/recipes/16369/soups-stews-and-chili/soup/",               // Soupes
@@ -806,11 +884,12 @@ func main() {
 		"https://www.allrecipes.com/recipes/1569/everyday-cooking/on-the-go/tailgating/",     // Tailgating
 	}
 
-	// ===== PHASE 6: EXÉCUTION DU SCRAPING =====
-	// Démarrer le scraping de toutes les catégories définies
-	log.Printf("Début du scraping de %d catégories...\n", len(categories))
+	// ===== PHASE 6: EXÉCUTION DE LA COLLECTE =====
+	// Démarrer la collecte de toutes les catégories définies
+	log.Printf("Début de la collecte de %d catégories...\n", len(categories))
 	for i, category := range categories {
-		log.Printf("🌐 Scraping catégorie %d/%d: %s\n", i+1, len(categories), category)
+		// Log de catégorie supprimé pour réduire la verbosité
+		_ = i // Variable utilisée mais pas loggée
 
 		// Visiter la catégorie (avec pagination automatique)
 		err := mainCollector.Visit(category)
@@ -819,8 +898,9 @@ func main() {
 			continue // Continuer avec la catégorie suivante en cas d'erreur
 		}
 
-		// Pause respectueuse entre les catégories pour éviter de surcharger le serveur
-		time.Sleep(1 * time.Second)
+		// Pause respectueuse entre les catégories avec délai aléatoire
+		randomDelay := getRandomDelay(2000, 4000) // Délai aléatoire entre 2s et 4s
+		time.Sleep(randomDelay)
 	}
 
 	// ===== PHASE 7: FINALISATION =====
@@ -846,5 +926,5 @@ func main() {
 	printDetailedStats(stats, filename)
 
 	// Afficher les informations de build dans les logs finaux
-	log.Printf("Scraping terminé avec la version %s (commit: %s)\n", version, gitCommit)
+	log.Printf("✅ Collecte terminée\n")
 }
